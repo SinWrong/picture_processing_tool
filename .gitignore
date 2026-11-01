@@ -1,0 +1,8 @@
+﻿# 生成物 / 临时文件
+out/
+work/
+__pycache__/
+*.py[cod]
+.idea/
+*.log
+Thumbs.db
