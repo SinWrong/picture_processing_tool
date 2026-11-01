@@ -67,11 +67,13 @@ class App:
         self.sample = None                 # template.Sample
         self.sample_path: str | None = None
 
+        self.compare = tk.BooleanVar(value=True)      # 处理后左右对比
         self.show_mask = tk.BooleanVar(value=False)
         self.apply_ratio = tk.BooleanVar(value=True)
         self.texture_var = tk.BooleanVar(value=False)
         self.scale = 1.0
         self.offset = (0, 0)
+        self._photos = []
 
         self._build_ui()
         self._poll_batch()
@@ -126,6 +128,8 @@ class App:
                         command=self.render).pack(side=tk.LEFT, padx=(6, 0))
         ttk.Checkbutton(bar2, text="按比例", variable=self.apply_ratio).pack(
             side=tk.LEFT, padx=(6, 0))
+        ttk.Checkbutton(bar2, text="对比", variable=self.compare,
+                        command=self.render).pack(side=tk.LEFT, padx=(6, 0))
 
         self.progress = ttk.Progressbar(bar2, mode="determinate", length=120)
         self.progress.pack(side=tk.RIGHT, padx=(6, 0))
@@ -259,6 +263,50 @@ class App:
         ch = max(1, self.canvas.winfo_height())
         if cw < 60 or ch < 60:
             cw, ch = PREVIEW_MAX, PREVIEW_MAX
+
+        # ---- 处理后：左右对比 ----
+        if self.result is not None and self.rgb is not None and self.compare.get():
+            gap = 10
+            label_h = 22
+            pane_w = max(40, (cw - gap) // 2)
+            pane_h = max(40, ch - label_h)
+            scale = min(pane_w / w, pane_h / h, 1.0)
+            dw, dh = max(1, int(w * scale)), max(1, int(h * scale))
+            oy = label_h + (pane_h - dh) // 2
+            ox1 = (pane_w - dw) // 2
+            ox2 = pane_w + gap + (pane_w - dw) // 2
+
+            before = self.rgb
+            after = self.result
+            if self.show_mask.get() and self.mask is not None:
+                after = imageio.overlay_visual(self.result, self.mask)
+            photos = []
+            for arr, ox, title, color in ((before, ox1, "修改前", "#e8e8e8"),
+                                          (after, ox2, "修改后", "#7ee0a0")):
+                pil = Image.fromarray(arr.astype(np.uint8)).resize((dw, dh), Image.LANCZOS)
+                photo = ImageTk.PhotoImage(pil)
+                photos.append(photo)          # 必须留引用，否则被 GC 掉变空白
+                self.canvas.create_image(ox, oy, anchor=tk.NW, image=photo)
+                self.canvas.create_rectangle(ox - 1, oy - 1, ox + dw, oy + dh,
+                                             outline="#c8c8c8")
+                self.canvas.create_text(
+                    ox + dw // 2, max(8, label_h // 2 + 2), text=title,
+                    fill=color, font=("Microsoft YaHei UI", 9, "bold"),
+                )
+            self._photos = photos
+            # 画布上的鼠标坐标按“修改前”那半算，框选仍然作用于原图
+            self.scale = scale
+            self.offset = (ox1, oy)
+            if self.region:
+                x0, y0, x1, y1 = self.region
+                self.canvas.create_rectangle(
+                    ox1 + x0 * scale, oy + y0 * scale,
+                    ox1 + x1 * scale, oy + y1 * scale,
+                    outline="#ffb300", width=2,
+                )
+            return
+
+        # ---- 单图 ----
         self.scale = min(cw / w, ch / h, 1.0)
         dw, dh = max(1, int(w * self.scale)), max(1, int(h * self.scale))
         display = img

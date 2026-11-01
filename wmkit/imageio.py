@@ -49,3 +49,17 @@ def overlay_visual(rgb: np.ndarray, mask: np.ndarray, color=(255, 40, 40), alpha
     m = mask[..., None].astype(np.float32) * alpha
     out = out * (1 - m) + c * m
     return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def save_side_by_side(path: str, before: np.ndarray, after: np.ndarray,
+                      *, gap: int = 12, labels=("before", "after"),
+                      bg: tuple[int, int, int] = (255, 255, 255)) -> None:
+    """把“修改前 / 修改后”左右拼成一张图保存（两边等高，不足处留白）。"""
+    a = np.asarray(before, dtype=np.uint8)
+    b = np.asarray(after, dtype=np.uint8)
+    h = max(a.shape[0], b.shape[0])
+    w = a.shape[1] + b.shape[1] + gap
+    canvas = np.full((h, w, 3), bg, np.uint8)
+    canvas[: a.shape[0], : a.shape[1]] = a[..., :3]
+    canvas[: b.shape[0], a.shape[1] + gap: a.shape[1] + gap + b.shape[1]] = b[..., :3]
+    save_image(path, canvas)

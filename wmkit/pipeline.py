@@ -302,6 +302,7 @@ def remove(rgb: np.ndarray, mask: np.ndarray, *, method: str = "harmonic",
 def process(image_path: str, out_path: str, *, region=None, sensitivity: float = 0.5,
             method: str = "harmonic", texture_refine: bool = False,
             mask_path: str | None = None, debug_path: str | None = None,
+            compare_path: str | None = None,
             auto: bool = True, extra: dict | None = None) -> dict:
     rgb, alpha, _size = imageio.load_image(image_path)
     h, w = rgb.shape[:2]
@@ -318,6 +319,8 @@ def process(image_path: str, out_path: str, *, region=None, sensitivity: float =
         imageio.save_mask_png(mask_path, mask)
     if debug_path:
         imageio.save_image(debug_path, imageio.overlay_visual(rgb, mask))
+    if compare_path:
+        imageio.save_side_by_side(compare_path, rgb, out, labels=("before", "after"))
 
     report = analysis_report(a, image_path=image_path, extra=extra)
     report["output"] = {"path": os.path.abspath(out_path), "method": method,
@@ -456,7 +459,8 @@ def process_sample(image_path: str, out_path: str, sample, *,
                    method: str = "harmonic", texture_refine: bool = False,
                    sensitivity: float = 0.5, mode: str = "stamp",
                    mask_path: str | None = None,
-                   debug_path: str | None = None) -> dict:
+                   debug_path: str | None = None,
+                   compare_path: str | None = None) -> dict:
     """用样本定位水印并去除，返回报告。
 
     mode="stamp"：样本就是水印，按它的形状直接擦（默认）；
@@ -479,6 +483,8 @@ def process_sample(image_path: str, out_path: str, sample, *,
     imageio.save_image(out_path, out, alpha=alpha)
     if mask_path:
         imageio.save_mask_png(mask_path, mask)
+    if compare_path:
+        imageio.save_side_by_side(compare_path, rgb, out, labels=("before", "after"))
     if debug_path:
         imageio.save_image(debug_path, imageio.overlay_visual(rgb, mask))
 

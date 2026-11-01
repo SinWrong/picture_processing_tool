@@ -321,6 +321,26 @@ def test_user_region_ring_mask():
               f"({blue_before} -> {blue_after})")
 
 
+def test_compare_export():
+    """--compare：导出“修改前 / 修改后”左右对比图。"""
+    print("对比图导出")
+    with tempfile.TemporaryDirectory() as tmp:
+        out = os.path.join(tmp, "o.png")
+        cmp_path = os.path.join(tmp, "c.png")
+        rep = pipeline.process("images/photo_bird.jpg", out,
+                               region="470,375,170,105", compare_path=cmp_path)
+        check("对比图已生成", os.path.exists(cmp_path))
+        if os.path.exists(cmp_path):
+            before, _, _ = imageio.load_image("images/photo_bird.jpg")
+            after, _, _ = imageio.load_image(out)
+            side, _, _ = imageio.load_image(cmp_path)
+            check("宽度 = 原图 + 结果 + 间隔",
+                  side.shape[1] == before.shape[1] + after.shape[1] + 12,
+                  f"({side.shape[1]} vs {before.shape[1]}+{after.shape[1]})")
+            check("高度够放两张图", side.shape[0] >= max(before.shape[0], after.shape[0]))
+        check("报告里有掩膜像素", rep["removal"]["mask_pixels"] > 0)
+
+
 def main():
     test_parse_region()
     test_inpaint()
@@ -334,6 +354,7 @@ def main():
     test_real_doubao_sample()
     test_auto_detect_cases()
     test_user_region_ring_mask()
+    test_compare_export()
     print(f"\n{PASS} passed, {FAIL} failed")
     return 1 if FAIL else 0
 

@@ -129,6 +129,7 @@ def cmd_remove(args) -> int:
                 mode=args.sample_mode,
                 mask_path=args.mask,
                 debug_path=args.debug,
+                compare_path=getattr(args, "compare", None),
             )
         except LookupError as exc:
             print(f"未处理: {exc}", file=sys.stderr)
@@ -143,6 +144,7 @@ def cmd_remove(args) -> int:
             texture_refine=args.texture,
             mask_path=args.mask,
             debug_path=args.debug,
+            compare_path=getattr(args, "compare", None),
             auto=not args.no_auto,
         )
         _print_analysis(report)
@@ -321,6 +323,8 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("--json", default=None, help="把处理报告写成 JSON")
     r.add_argument("--mask", default=None, help="同时导出掩膜 PNG")
     r.add_argument("--debug", default=None, help="同时导出掩膜叠加调试图")
+    r.add_argument("--compare", default=None, metavar="PNG",
+                   help="同时导出“修改前 / 修改后”左右对比图")
     add_common(r)
     add_sample(r)
     r.set_defaults(func=cmd_remove)

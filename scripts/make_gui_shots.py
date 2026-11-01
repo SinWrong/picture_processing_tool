@@ -27,18 +27,28 @@ for name in ("showinfo", "showerror", "showwarning"):
 
 def shot(root, path: str):
     """整屏抓图再按“物理/逻辑”比例裁出窗口（高 DPI 缩放也准）。"""
-    root.update_idletasks()
-    root.update()
-    time.sleep(0.5)
-    full = ImageGrab.grab()
-    scale = full.width / float(root.winfo_screenwidth())   # 物理像素 / 逻辑像素
-    x, y = root.winfo_rootx() * scale, root.winfo_rooty() * scale
-    w, h = root.winfo_width() * scale, root.winfo_height() * scale
-    img = full.crop((int(x), int(y), int(x + w), int(y + h)))
-    if img.width > OUT_W:
+    from PIL import ImageStat
+
+    img = None
+    for _ in range(3):
+        root.attributes("-topmost", True)
+        root.lift()
+        root.focus_force()
+        root.update_idletasks()
+        root.update()
+        time.sleep(0.6)
+        full = ImageGrab.grab()
+        scale = full.width / float(root.winfo_screenwidth())
+        x, y = root.winfo_rootx() * scale, root.winfo_rooty() * scale
+        w, h = root.winfo_width() * scale, root.winfo_height() * scale
+        img = full.crop((int(x), int(y), int(x + w), int(y + h)))
+        # 抓黑了（窗口被遮/重绘中）就再试一次
+        if ImageStat.Stat(img.convert("L")).stddev[0] > 3.0:
+            break
+    if img.width != OUT_W:
         img = img.resize((OUT_W, int(img.height * OUT_W / img.width)), Image.LANCZOS)
     img.save(path)
-    print("saved", path, img.size, "scale", round(scale, 3))
+    print("saved", path, img.size)
 
 
 root = tk.Tk()
@@ -99,6 +109,20 @@ app.render()
 root.update()
 shot(root, os.path.join(DOCS, "gui-4-batch.png"))
 shutil.rmtree(tmp_out, ignore_errors=True)
+
+# 5) 对比视图（换一张小图，左右两半都看得清）
+corner = os.path.join("tests", "data", "wm_corner.png")
+if os.path.exists(corner):
+    app.tree.selection_set(corner)
+    app.on_tree_select()
+    root.update()
+    app.region = (69, 39, 297, 141)       # 珊瑚上的“南海网”彩色 logo
+    app.region_pct = None
+    app.show_mask.set(False)
+    app.compare.set(True)
+    app.do_remove()
+    root.update()
+    shot(root, os.path.join(DOCS, "gui-5-compare.png"))
 
 root.destroy()
 print("done")
