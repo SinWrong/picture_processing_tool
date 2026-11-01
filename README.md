@@ -1,7 +1,14 @@
 # wm —— 图片水印分析 / 去除工具
 
+> **Watermark detection & removal toolkit in pure Python** —
+> auto-detect · box-select · sample matching · batch · before/after preview.
+> No OpenCV, no GPU, no network required.
+
 纯 **Python + numpy + Pillow** 实现的水印分析与去除工具，**不依赖 OpenCV**，
 也提供 tkinter 图形界面。装好依赖（见第零节）即可运行，Windows / macOS / Linux 通用。
+
+**适合谁用**：需要批量清掉公众号图、海报、截图里固定水印的人；想拿掩膜再接自己的修复模型
+（LaMa / MAT）的人；以及想看一套“不依赖 OpenCV”的经典水印去除实现的人。
 
 它做两件事：
 
