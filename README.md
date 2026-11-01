@@ -1,8 +1,7 @@
 # wm —— 图片水印分析 / 去除工具
 
-纯 **Python + numpy + Pillow** 实现的水印分析与去除工具，**不依赖 OpenCV**，在
-`D:\anaconda3\envs\new_env`（Python 3.12 / numpy 2.x / Pillow）下可直接运行，也提供
-tkinter 图形界面。
+纯 **Python + numpy + Pillow** 实现的水印分析与去除工具，**不依赖 OpenCV**，
+也提供 tkinter 图形界面。装好依赖（见第零节）即可运行，Windows / macOS / Linux 通用。
 
 它做两件事：
 
@@ -21,35 +20,81 @@ out/photo_clean.png    ◀──修复──  调和扩散（无接缝）
 
 ---
 
+## 零、安装与运行环境
+
+### 需要什么
+
+| 项目 | 要求 |
+| --- | --- |
+| Python | **3.9 及以上**（开发与实测：3.12） |
+| 第三方库 | 只有 `numpy` 和 `Pillow`（不需要 OpenCV、不需要 GPU、不需要联网） |
+| 图形界面 | `tkinter`，Python 官方安装包自带；Linux 用系统 Python 时可能需要 `sudo apt install python3-tk` |
+| 系统 | Windows / macOS / Linux 都行（Windows 下中文输出见文末「常见问题」） |
+
+### 安装
+
+```bash
+git clone git@github.com:SinWrong/picture_processing_tool.git
+cd picture_processing_tool
+
+python -m pip install -r requirements.txt       # 等价于 pip install numpy pillow
+```
+
+> 用 conda 也可以：`conda create -n wm python=3.12 numpy pillow -y && conda activate wm`。
+
+### 验证安装
+
+```bash
+python wm.py --help          # 应列出 analyze / remove / batch / sample / match / gui
+python tests/test_basic.py   # 自检脚本，最后一行应显示 "38 passed, 0 failed"
+```
+
+### 三步上手（最常用）
+
+```bash
+python wm.py gui             # 打开图形界面
+```
+
+1. 点「**打开文件夹**」，选中要处理的图片所在目录（jpg / png / webp / bmp / tif）；
+2. 在左侧列表点一张图，右边预览里**按住鼠标拖一个框**，把水印整个圈住；
+3. 勾上「**批量按比例套用选区**」，点「**批量处理全部**」。
+
+结果写在 `<原文件夹>\out\` 下，文件名是 `<原名>_clean.png`，**原图不会被改动**。
+
+---
+
 ## 一、快速开始
+
+> 下面的 `python` 指**装了 numpy/Pillow 的那个解释器**。用 conda 环境时换成
+> `conda run -n wm python` 或该环境的完整路径（例如 `D:\anaconda3\envs\new_env\python.exe`）。
 
 ```powershell
 # 1) 看环境是否就绪（项目根目录执行）
-D:\anaconda3\envs\new_env\python.exe wm.py --help
+python wm.py --help
 
 # 2) 只分析，不修改图片：打印候选区域 + 叠加色 + 透明度，导出 JSON / 调试图
-D:\anaconda3\envs\new_env\python.exe wm.py analyze images\photo_bird.jpg `
+python wm.py analyze images\photo_bird.jpg `
     --json out\report.json --debug out\mask_overlay.png
 
 # 3) 指定区域去除水印（最推荐：快、准）
-D:\anaconda3\envs\new_env\python.exe wm.py remove images\photo_bird.jpg `
+python wm.py remove images\photo_bird.jpg `
     -o out\photo_clean.png --region 470,375,170,105
 
 # 4) 自动检测 + 去除
-D:\anaconda3\envs\new_env\python.exe wm.py remove images\poster_icu.png `
+python wm.py remove images\poster_icu.png `
     -o out\poster_clean.png --auto
 
 # 5) 批量处理一个目录
-D:\anaconda3\envs\new_env\python.exe wm.py batch images -o out --region 470,375,170,105
+python wm.py batch images -o out --region 470,375,170,105
 
 # 6) 图形界面：可以直接打开一个文件夹，列表里逐张预览、框选、批量处理
-D:\anaconda3\envs\new_env\python.exe wm.py gui
-D:\anaconda3\envs\new_env\python.exe wm.py gui D:\照片\待处理     # 启动即载入该文件夹
+python wm.py gui
+python wm.py gui D:\照片\待处理     # 启动即载入该文件夹
 
 # 7) 先截一个“水印样本”，之后靠它自动定位（详见第四节）
-D:\anaconda3\envs\new_env\python.exe wm.py sample images\poster_icu.png `
+python wm.py sample images\poster_icu.png `
     -o samples\doubao_watermark.npz --region 860,1340,220,100
-D:\anaconda3\envs\new_env\python.exe wm.py remove "D:\照片\a.jpg" `
+python wm.py remove "D:\照片\a.jpg" `
     -o out\a_clean.png --sample samples\doubao_watermark.npz
 ```
 
@@ -136,19 +181,19 @@ D:\anaconda3\envs\new_env\python.exe wm.py remove "D:\照片\a.jpg" `
 
 ```powershell
 # 1) 截样本（区域写法同 --region）
-D:\anaconda3\envs\new_env\python.exe wm.py sample images\poster_icu.png `
+python wm.py sample images\poster_icu.png `
     -o samples\doubao_watermark.npz --region 860,1340,220,100
 
 # 2) 先看它会落在哪（不改图；--debug 画出匹配框）
-D:\anaconda3\envs\new_env\python.exe wm.py match "D:\照片\a.jpg" `
+python wm.py match "D:\照片\a.jpg" `
     --sample samples\doubao_watermark.npz --debug out\match.png
 
 # 3) 定位 + 去除
-D:\anaconda3\envs\new_env\python.exe wm.py remove "D:\照片\a.jpg" `
+python wm.py remove "D:\照片\a.jpg" `
     -o out\a_clean.png --sample samples\doubao_watermark.npz
 
 # 4) 整个目录用同一套样本批量处理
-D:\anaconda3\envs\new_env\python.exe wm.py batch "D:\照片" -o out `
+python wm.py batch "D:\照片" -o out `
     --sample samples\doubao_watermark.npz
 ```
 
@@ -330,7 +375,7 @@ I = a·C + (1 - a)·B        →     a = (I - B) / (C - B)
 
 ### 性能
 
-纯 numpy/Pillow，单线程（`D:\anaconda3\envs\new_env`）：
+纯 numpy/Pillow，单线程（Python 3.12 / numpy 2.x 实测）：
 
 | 图片 | 分析（背景 + 掩膜） | 修复 | 合计 |
 | --- | --- | --- | --- |
@@ -345,7 +390,9 @@ I = a·C + (1 - a)·B        →     a = (I - B) / (C - B)
 ## 十一、目录结构
 
 ```
-wm.py                 命令行入口（analyze / remove / batch / gui）
+wm.py                 命令行入口（analyze / remove / batch / sample / match / gui）
+requirements.txt      运行依赖（numpy + Pillow）
+README.md             本说明
 wmkit/
   analysis.py         背景估计、颜色众数、alpha 反解、掩膜、候选区域检测
   inpaint.py          Telea（FMM）修复
@@ -356,19 +403,23 @@ wmkit/
   gui.py              tkinter 图形界面（单张 + 文件夹批量 + 样本）
   imageio.py          读写与可视化
   morph.py            形态学 / 连通域 / 积分图
-scripts/make_demo.py        重新生成 out/ 里的示例输出与对比图
-scripts/make_sample_demo.py 样本匹配示例（换尺寸/亮度后仍能定位并去除）
+scripts/make_demo.py          重新生成 out/ 里的示例输出与对比图
+scripts/make_sample_demo.py   样本匹配示例（换尺寸/亮度后仍能定位并去除）
+scripts/make_coins_demo.py    自动检测示例（深色纹理背景 + 右下角文字）
+scripts/make_doubao_demo.py   白底水印图当样本的示例
+scripts/make_batch_compare.py 批量结果对比图（原图 / 旧 / 新）
 samples/              示例水印样本（doubao_watermark.npz）
+tests/data/           回归测试用的小图（自动检测 / 彩色 logo / 豆包样本）
 images/               示例原图
-out/                  示例输出（结果、掩膜、对比图、JSON 报告）
+out/                  生成物（结果、掩膜、对比图、JSON 报告），已在 .gitignore 里
 tests/test_basic.py   冒烟测试
 ```
 
 跑测试 / 重新生成示例：
 
 ```powershell
-D:\anaconda3\envs\new_env\python.exe tests\test_basic.py
-D:\anaconda3\envs\new_env\python.exe scripts\make_demo.py
+python tests\test_basic.py
+python scripts\make_demo.py
 ```
 
 ---
@@ -407,3 +458,51 @@ res = analysis.build_mask(rgb, bg, (470, 375, 640, 480))
 mask = res.mask          # HxW bool
 res.summary()            # 叠加色 / 覆盖率 / 置信度
 ```
+
+---
+
+## 十三、常见问题
+
+**Q：Windows 命令行里中文是乱码 / 报 `UnicodeEncodeError`？**
+先 `chcp 65001` 切到 UTF-8，或在 PowerShell 里 `$env:PYTHONIOENCODING="utf-8"` 再运行。
+`wm.py gui` 不受影响（界面用 Tk 自己的字体渲染）。
+
+**Q：`python wm.py gui` 报 `ModuleNotFoundError: No module named 'tkinter'`？**
+Python 没装 Tk 组件。Windows 用官方安装包重装并勾选 *tcl/tk and IDLE*；Linux 装 `python3-tk`；
+macOS 用 python.org 的安装包。不想装 Tk 也能用命令行（`remove` / `batch`）完成全部工作。
+
+**Q：点「去除水印」后水印还在 / 只擦掉一半？**
+说明掩膜没盖到水印。按这个顺序排查：
+
+1. 勾「显示掩膜」看红色区域是否盖住了水印——没盖住就是区域不对；
+2. 重新**贴着水印**框一次（框太松/太紧都会影响）；
+3. 或换个思路用**水印样本**（见第五节），样本定位比画框更省事；
+4. 还是不行就把「灵敏度」往右调一点，让更淡的笔画也算进来。
+
+**Q：批量处理里少数几张没处理干净？**
+自动检测是启发式的，个别图会跑偏。批量已经做了「同批统一」（见第三节），但最稳的做法是
+**框选一次 + 勾「按比例」**；日志里标「按同批多数区域」的图就是被统一区域补跑过的。
+
+**Q：擦完是一块模糊的色块？**
+扩散修复不会凭空造纹理。纯色/渐变背景上基本看不出；草地、树叶、砂石这类高频背景会变平滑。
+可以试试 `--texture`（CLI）或勾「纹理细化」（界面），观感会自然一些，但不会完全无痕。
+需要完全无痕得接 LaMa / MAT 这类深度学习修复模型——本工具输出的掩膜可以直接喂给它们。
+
+**Q：处理完的图在哪？原图会被改吗？**
+不会改原图。命令行默认输出到 `-o` 指定的路径；图形界面默认输出到 `<原文件夹>\out\`，
+文件名加 `_clean` 后缀（png 输出为 png，webp 保持 webp）。可以用「输出目录…」改位置。
+
+**Q：支持哪些格式？**
+输入：`.jpg .jpeg .png .webp .bmp .tif .tiff`。输出：png（以及 webp，若输入是 webp）。
+
+**Q：一张图里有好几处同样的水印？**
+用水印样本模式，`--max-matches`（默认 4）控制最多处理几处；
+或用 `--region` 逐个区域跑几遍。
+
+**Q：运行很慢？**
+- 自动检测最慢（每张要试几十个窗口），确定位置时优先用 `--region` 或样本；
+- 大图会先降采样估背景，正常 1080p 约 2~5 秒/张；
+- 批量是单线程顺序处理，属于正常现象（纯 numpy，没有多进程）。
+
+**Q：能不能当库用？**
+可以，见第十二节；`wmkit.analysis.build_mask()` 只出掩膜、`wmkit.pipeline.process()` 出图 + 报告。
